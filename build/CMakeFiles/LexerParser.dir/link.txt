@@ -1,0 +1,1 @@
+/usr/bin/c++ -g -Wall CMakeFiles/LexerParser.dir/src/lexer/Lexer.cpp.o CMakeFiles/LexerParser.dir/src/main.cpp.o CMakeFiles/LexerParser.dir/src/parser/Parser.cpp.o -o LexerParser 
