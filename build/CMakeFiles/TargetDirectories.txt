@@ -1,3 +1,0 @@
-/home/hajun/aaaaa/compiler_project/build/CMakeFiles/LexerParser.dir
-/home/hajun/aaaaa/compiler_project/build/CMakeFiles/edit_cache.dir
-/home/hajun/aaaaa/compiler_project/build/CMakeFiles/rebuild_cache.dir
