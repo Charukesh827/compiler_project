@@ -162,6 +162,8 @@ CMakeFiles/LexerParser.dir/src/main.cpp.o: \
  /usr/include/c++/13/bits/vector.tcc \
  /home/hajun/aaaaa/compiler_project/src/lexer/Token.h \
  /home/hajun/aaaaa/compiler_project/src/parser/Parser.h \
+ /home/hajun/aaaaa/compiler_project/src/lexer/Token.h \
+ /home/hajun/aaaaa/compiler_project/src/parser/AST.h \
  /usr/include/c++/13/memory /usr/include/c++/13/bits/stl_tempbuf.h \
  /usr/include/c++/13/bits/stl_raw_storage_iter.h \
  /usr/include/c++/13/bits/align.h \
@@ -179,6 +181,4 @@ CMakeFiles/LexerParser.dir/src/main.cpp.o: \
  /usr/include/c++/13/bits/atomic_lockfree_defines.h \
  /usr/include/c++/13/backward/auto_ptr.h \
  /usr/include/c++/13/pstl/glue_memory_defs.h \
- /usr/include/c++/13/pstl/execution_defs.h \
- /home/hajun/aaaaa/compiler_project/src/lexer/Token.h \
- /home/hajun/aaaaa/compiler_project/src/parser/AST.h
+ /usr/include/c++/13/pstl/execution_defs.h

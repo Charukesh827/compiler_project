@@ -141,41 +141,94 @@ node *Parser::F()
     }
 }
 
+int Parser::Precedence(std::string x){
+    if(x=="+" || x=="-"){
+        return 1;
+    }else if(x=="*" || x=="/"){
+        return 2;
+    }else{
+        return 3;
+    }
+}
+
 std::unique_ptr<ASTNode> Parser::ExpressionParser()
 {
     auto root = E();
-    std::vector<node *> stack, help;
+    std::vector<node *> stack, children;
     stack.push_back(root);
-    node* hold;
-    node* big;
+    node *top;
+    node *big;
     std::string name, child;
-    int sizebefore=1;
+    int sizebefore = 1,index;
     while (stack.size() > 0)
     {
-        hold = stack.back();
-        name = hold->getName();
+        top = stack.back(); //top of the stack 
+        name = top->getName(); //name of the current node
         if (name == "E" || name == "E'" || name == "T" || name == "T'" || name == "F" || name == "F'")
         {
-            help = hold->getArray();
-            for (auto it = help.size() - 1; it > 0; --it)
+            children = top->getArray(); //holds the array of list
+            if (children.at(0)->getName() == "(")
             {
-                child = help.at(it)->getName();
+                children.erase(children.begin());
+                children.erase(children.end());
+            }
+            
+            for (auto it = children.size() - 1; it >= 0; --it)
+            {
+                child = children.at(it)->getName(); // symbol in the name
                 if (child == "E" || child == "E'" || child == "T" || child == "T'" || child == "F" || child == "F'")
                 {
-                    stack.push_back(help.at(it));
-                    //find the biggest of all
+                    stack.push_back(children.at(it));
                 }
-                if(stack.size()==sizebefore){
-                    //applythe biggest and clear the child array\
+                else if (child == "e")
+                {
+                    //do something if it is a 'e'
+                }
+                else
+                {
+                    // find the biggest of all
+                    if (big == nullptr)
+                    {
+                        big = children.at(it);
+                        index=0;
+                    }
+                    else if (Precedence(big->getName()) > Precedence(children.at(it)->getName()))
+                    {
+                        big = children.at(it);
+                        index=it;
+                    }
+                }
+                if (stack.size() == sizebefore)
+                {
+                    //apply the biggest and remove the biggest from the vector\
                     //remove from the stack
+                    top->setName(big->getName());
+                    children.erase(children.begin()+index);
+                    top->setArray(children);
+                    stack.pop_back();
                 }
+                sizebefore=stack.size();
+                big=nullptr;
             }
         }
         else
         {
-            stack.pop_back();
+            stack.pop_back(); // find the biggest of all
         }
     }
+
+    //generating tokens
+    //printing tree in dfs
+    stack.push_back(root);
+    while (stack.size()>0)
+    {
+        top= stack.back();
+        std::cout<<top->getName()<<std::endl;
+        stack.pop_back();
+        stack.push_back(top->getArray().at(0));
+        stack.push_back(top->getArray().at(1));
+    }
+    return std::make_unique<NumberExprAST>(10);
 }
 
 // end of Expression define

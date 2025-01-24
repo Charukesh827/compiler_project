@@ -1,8 +1,9 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <memory>
+
 #include <vector>
+#include <iostream>
 #include "Token.h"
 #include "AST.h"
 
@@ -48,12 +49,12 @@ private:
     // F -> (E) | id
     // Recursive Descent Parser
     
-
     node* E();
     node* T();
     node* Eprime();
     node* Tprime();
     node* F();
+    int Precedence(std::string x);
 
 };
 
