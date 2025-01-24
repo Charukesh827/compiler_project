@@ -42,7 +42,7 @@ void Lexer::ungetChar() {
 
 Token Lexer::getNextToken() {
     char ch = getChar();
-    while (isspace(ch)) {
+    while (isspace(ch) || ch == ',') {
         ch=getNextChar();
     }
     size_t col = column;
@@ -53,7 +53,7 @@ Token Lexer::getNextToken() {
             identifier += ch;
             ch = getNextChar();
         }
-        if (identifier == "def" || identifier == "extern" || identifier == "if" || identifier == "else")
+        if (identifier == "def" || identifier == "extern" || identifier == "if" || identifier == "else" || identifier == "while")
         {
             return Token(TokenType::KEYWORD, identifier, line, col);
         }else
@@ -71,7 +71,26 @@ Token Lexer::getNextToken() {
         return Token(TokenType::NUMBER, number, line, col);
     }
 
-    if (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '=' || ch == '(' || ch == ')' || ch == '<' || ch == '>' || ch == '!' || ch == ',' || ch == '{' || ch == '}') 
+    if(ch=='=' && source[index+1] == '='){
+        index+=2;
+        return Token(TokenType::OPERATOR, "==", line, column);
+    }
+
+    if(ch=='>' && source[index+1] == '='){
+        index+=2;
+        return Token(TokenType::OPERATOR, ">=", line, column);
+    }
+
+    if(ch=='<' && source[index+1] == '='){
+        index+=2;
+        return Token(TokenType::OPERATOR, "<=", line, column);
+    }
+    if(ch=='<' && source[index+1] == '>'){
+        index+=2;
+        return Token(TokenType::OPERATOR, "<>", line, column);
+    }
+
+    if (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '=' || ch == '(' || ch == ')' || ch == '<' || ch == '>' || ch == '!' || ch == '{' || ch == '}') 
     {
         getNextChar();
 

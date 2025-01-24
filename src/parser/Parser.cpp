@@ -1,7 +1,20 @@
 #include "Parser.h"
-#include <stdexcept>
 
 Parser::Parser(const std::vector<Token> &tokens) : tokens(tokens) {}
+
+// Main functions
+
+std::unique_ptr<ASTNode> Parser::parse()
+{
+    std::vector<std::unique_ptr<ASTNode>> functions;
+    while (matchToken(TokenType::KEYWORD) && CurTok().value == "def")
+    {
+        functions.push_back(FunctionParser());
+    }
+    return parseExpression();
+}
+
+// Helper functions
 
 const Token &Parser::CurTok()
 {
@@ -10,277 +23,198 @@ const Token &Parser::CurTok()
 
 const Token &Parser::getNextToken()
 {
-    return tokens[++currentToken];
+    return tokens[currentToken++];
 }
 
-std::unique_ptr<ASTNode> Parser::CreateProto()
+bool Parser::matchToken(TokenType type)
 {
-
-    // Reading the function header and creating prototype
-    //   def function_name(args*)
-
-    std::string name = getNextToken().value; // function name
-    getNextToken();                          // eat '('
-    std::vector<std::unique_ptr<ASTNode>> args;
-    while (CurTok().value != ")") // loop until ')'
+    if (CurTok().type == type)
     {
-        // add the arguments as an variabe type into the array
+        return true;
+    }
+    return false;
+}
+
+// Parser fuctions
+
+std::unique_ptr<ASTNode> Parser::FunctionParser()
+{
+    auto proto = ProtoParser();
+    auto body = BlockParser();
+    return std::make_unique<FunctionAST>(proto, body);
+}
+
+std::unique_ptr<ASTNode> Parser::ProtoParser()
+{
+    getNextToken();
+    auto name = CurTok();
+    std::vector<std::unique_ptr<ASTNode>> args;
+    getNextToken();
+    while (CurTok().value != ")")
+    {
         args.push_back(std::make_unique<VariableExprAST>(CurTok().value));
-        if (getNextToken().value == ",")
-        {
-            getNextToken();
-        }
     }
     return std::make_unique<PrototypeAST>(name, args);
 }
 
-// Defining Expression parser recurson functions
-
-node *Parser::E()
+std::unique_ptr<ASTNode> Parser::BlockParser()
 {
-    std::vector<node *> v;
-    v.push_back(T());
-    v.push_back(Eprime());
-    return new node("E", v);
-}
-
-node *Parser::Eprime()
-{
-    std::vector<node *> v;
-    if (CurTok().value == "+")
+    std::vector<std::unique_ptr<ASTNode>> statements;
+    getNextToken();
+    while (CurTok().value != "}")
     {
-        v.push_back(new node("+", v));
-        getNextToken();
-        v.push_back(T());
-        v.push_back(Eprime());
-        return new node("E'", v);
-    }
-    else if (CurTok().value == "-")
-    {
-        v.push_back(new node("-", v));
-        getNextToken();
-        v.push_back(T());
-        v.push_back(Eprime());
-        return new node("E'", v);
-    }
-    else
-    {
-        return new node("e", v);
-    }
-}
-
-node *Parser::T()
-{
-    std::vector<node *> v;
-    v.push_back(F());
-    v.push_back(Tprime());
-    return new node("T", v);
-}
-
-node *Parser::Tprime()
-{
-    std::vector<node *> v;
-    if (CurTok().value == "*")
-    {
-        v.push_back(new node("*", v));
-        getNextToken();
-        v.push_back(F());
-        v.push_back(Tprime());
-        return new node("T'", v);
-    }
-    else if (CurTok().value == "/")
-    {
-        v.push_back(new node("/", v));
-        getNextToken();
-        v.push_back(F());
-        v.push_back(Tprime());
-        return new node("T'", v);
-    }
-    else
-    {
-        return new node("e", v);
-    }
-}
-
-node *Parser::F()
-{
-    std::vector<node *> v;
-    if (CurTok().value == "(")
-    {
-        v.push_back(new node("(", v));
-        getNextToken();
-        v.push_back(E());
-        if (CurTok().value == ")")
+        if (matchToken(TokenType::KEYWORD) && CurTok().value == "if")
         {
-            v.push_back(new node(")", v));
+            currentToken += 2;
+            auto condition = parseExpression();
+            currentToken += 2;
+            auto block = BlockParser();
+            statements.push_back(std::make_unique<ConditionAST>("if", condition, block));
+        }
+        else if (matchToken(TokenType::KEYWORD) && CurTok().value == "else")
+        {
             getNextToken();
-            return new node("F", v);
+            if (CurTok().value == "if")
+            {
+                currentToken += 2;
+                auto condition = parseExpression();
+                currentToken += 2;
+                auto block = BlockParser();
+                statements.push_back(std::make_unique<ConditionAST>("elif", condition, block));
+            }
+            else
+            {
+                std::unique_ptr<ASTNode> condition;
+                auto block = BlockParser();
+                statements.push_back(std::make_unique<ConditionAST>("else", condition, block));
+            }
+        }
+        else if (matchToken(TokenType::KEYWORD) && CurTok().value == "while")
+        {
+            currentToken += 2;
+            auto cond = parseExpression();
+            currentToken += 2;
+            auto block = BlockParser();
+            statements.push_back(std::make_unique<LoopAST>(cond, block));
         }
         else
         {
-            // error("Missing closing parenthesis");
-            exit(23);
+            statements.push_back(parseExpression());
+            getNextToken();
         }
     }
-    else if (CurTok().type == TokenType::IDENTIFIER)
+}
+
+// Expression parsers
+
+std::unique_ptr<ASTNode> Parser::parseExpression()
+{
+    return parseEquality();
+}
+
+std::unique_ptr<ASTNode> Parser::parseEquality()
+{
+    auto lhs = parseComparison();
+
+    while (matchToken(TokenType::OPERATOR) &&
+           (CurTok().value == "==" || CurTok().value == "<>"))
     {
-        auto name = CurTok().value;
+        std::string op = getNextToken().value;
+        auto rhs = parseComparison();
+        lhs = std::make_unique<BinaryExprAST>(op, std::move(lhs), std::move(rhs));
+    }
+
+    return lhs;
+}
+
+std::unique_ptr<ASTNode> Parser::parseComparison()
+{
+    auto lhs = parseTerm();
+
+    while (matchToken(TokenType::OPERATOR) &&
+           (CurTok().value == "<" || CurTok().value == ">" ||
+            CurTok().value == "<=" || CurTok().value == ">="))
+    {
+        std::string op = getNextToken().value;
+        auto rhs = parseTerm();
+        lhs = std::make_unique<BinaryExprAST>(op, std::move(lhs), std::move(rhs));
+    }
+
+    return lhs;
+}
+
+std::unique_ptr<ASTNode> Parser::parseTerm()
+{
+    auto lhs = parseFactor();
+
+    while (matchToken(TokenType::OPERATOR) &&
+           (CurTok().value == "+" || CurTok().value == "-"))
+    {
+        std::string op = getNextToken().value;
+        auto rhs = parseFactor();
+        lhs = std::make_unique<BinaryExprAST>(op, std::move(lhs), std::move(rhs));
+    }
+
+    return lhs;
+}
+
+std::unique_ptr<ASTNode> Parser::parseFactor()
+{
+    auto lhs = parsePrimary();
+
+    while (matchToken(TokenType::OPERATOR) &&
+           (CurTok().value == "*" || CurTok().value == "/"))
+    {
+        std::string op = getNextToken().value;
+        auto rhs = parsePrimary();
+        lhs = std::make_unique<BinaryExprAST>(op, std::move(lhs), std::move(rhs));
+    }
+
+    return lhs;
+}
+
+std::unique_ptr<ASTNode> Parser::parsePrimary()
+{
+    const Token &token = CurTok();
+
+    if (token.type == TokenType::NUMBER)
+    {
         getNextToken();
-        return new node(name, v);
+        return std::make_unique<NumberExprAST>(std::stod(token.value));
     }
-    else if (CurTok().type == TokenType::NUMBER)
+
+    if (token.type == TokenType::IDENTIFIER)
     {
-        auto name = std::string(CurTok().value);
         getNextToken();
-        return new node(name, v);
+        return std::make_unique<VariableExprAST>(token.value);
     }
-    else
+
+    if (matchToken(TokenType::PUNCTUATION) && token.value == "(")
     {
-        // error("Invalid token");
-        exit(24);
+        auto expr = parseExpression();
+        if (!matchToken(TokenType::PUNCTUATION) || CurTok().value != ")")
+        {
+            throw std::runtime_error("Expected closing parenthesis");
+        }
+        getNextToken();
+        return expr;
     }
+
+    throw std::runtime_error("Unexpected token: " + token.value);
 }
 
-int Parser::Precedence(std::string x){
-    if(x=="+" || x=="-"){
-        return 1;
-    }else if(x=="*" || x=="/"){
-        return 2;
-    }else{
-        return 3;
-    }
-}
-
-std::unique_ptr<ASTNode> Parser::ExpressionParser()
+std::unique_ptr<ASTNode> Parser::parseAssignment()
 {
-    auto root = E();
-    std::vector<node *> stack, children;
-    stack.push_back(root);
-    node *top;
-    node *big;
-    std::string name, child;
-    int sizebefore = 1,index;
-    while (stack.size() > 0)
+    const Token &token = CurTok();
+
+    if (token.type == TokenType::IDENTIFIER && tokens[currentToken + 1].value == "=")
     {
-        top = stack.back(); //top of the stack 
-        name = top->getName(); //name of the current node
-        if (name == "E" || name == "E'" || name == "T" || name == "T'" || name == "F" || name == "F'")
-        {
-            children = top->getArray(); //holds the array of list
-            if (children.at(0)->getName() == "(")
-            {
-                children.erase(children.begin());
-                children.erase(children.end());
-            }
-            
-            for (auto it = children.size() - 1; it >= 0; --it)
-            {
-                child = children.at(it)->getName(); // symbol in the name
-                if (child == "E" || child == "E'" || child == "T" || child == "T'" || child == "F" || child == "F'")
-                {
-                    stack.push_back(children.at(it));
-                }
-                else if (child == "e")
-                {
-                    //do something if it is a 'e'
-                }
-                else
-                {
-                    // find the biggest of all
-                    if (big == nullptr)
-                    {
-                        big = children.at(it);
-                        index=0;
-                    }
-                    else if (Precedence(big->getName()) > Precedence(children.at(it)->getName()))
-                    {
-                        big = children.at(it);
-                        index=it;
-                    }
-                }
-                if (stack.size() == sizebefore)
-                {
-                    //apply the biggest and remove the biggest from the vector\
-                    //remove from the stack
-                    top->setName(big->getName());
-                    children.erase(children.begin()+index);
-                    top->setArray(children);
-                    stack.pop_back();
-                }
-                sizebefore=stack.size();
-                big=nullptr;
-            }
-        }
-        else
-        {
-            stack.pop_back(); // find the biggest of all
-        }
+        std::string varName = token.value;
+        getNextToken(); // Consume identifier
+        getNextToken(); // Consume '='
+        auto value = parseExpression();
+        return std::make_unique<BinaryExprAST>("=", std::make_unique<VariableExprAST>(varName), std::move(value));
     }
 
-    //generating tokens
-    //printing tree in dfs
-    stack.push_back(root);
-    while (stack.size()>0)
-    {
-        top= stack.back();
-        std::cout<<top->getName()<<std::endl;
-        stack.pop_back();
-        stack.push_back(top->getArray().at(0));
-        stack.push_back(top->getArray().at(1));
-    }
-    return std::make_unique<NumberExprAST>(10);
-}
-
-// end of Expression define
-
-void Parser::CreateBlock(std::vector<std::unique_ptr<ASTNode>> &body)
-{
-    // Reading the block inside the function
-    // content inside {}
-
-    auto token = getNextToken(); // eat '{'
-    while (token.value != "}")   // loop untill '}'
-    {
-        // if it is an indentifier push into queue
-        if (token.type == TokenType::IDENTIFIER)
-        {
-            std::string name = token.value;
-            queue.push_back(std::make_unique<VariableExprAST>(name));
-        }
-
-        /* parse assignment operations */
-        if (token.value == "=")
-        {
-            body.push_back(std::make_unique<BinaryExprAST>('=', queue.front(), ExpressionParser()));
-            queue.erase(queue.begin());
-        }
-    }
-}
-
-std::unique_ptr<ASTNode> Parser::FunctionParser()
-{
-    auto token = CurTok();
-    if (token.type == TokenType::KEYWORD)
-    {
-        if (token.value == "def")
-        {
-            auto proto = CreateProto(); // create prototype
-            std::vector<std::unique_ptr<ASTNode>> body;
-            CreateBlock(body); // create block
-            return std::make_unique<FunctionAST>(proto, body);
-        }
-    }
-
-    throw std::runtime_error("Unknown expression");
-}
-
-std::unique_ptr<ASTNode> Parser::parse()
-{
-    auto root = std::make_unique<ProgramAST>();
-    while (currentToken < tokens.size())
-    {
-        root->addFunction(FunctionParser());
-    }
-
-    return root;
+    return parseEquality();
 }

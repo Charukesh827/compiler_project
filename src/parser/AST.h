@@ -5,12 +5,14 @@
 #include <memory>
 #include <vector>
 
-class ASTNode {
+class ASTNode
+{
 public:
     virtual ~ASTNode() = default;
 };
 
-class NumberExprAST : public ASTNode {
+class NumberExprAST : public ASTNode
+{
     double value;
 
 public:
@@ -18,23 +20,46 @@ public:
     double getValue() const { return value; }
 };
 
-class VariableExprAST : public ASTNode {
+class VariableExprAST : public ASTNode
+{
     std::string name;
+
 public:
     explicit VariableExprAST(const std::string &name) : name(name) {}
     const std::string getName() const { return name; }
 };
 
-class BinaryExprAST : public ASTNode {
+class BinaryExprAST : public ASTNode
+{
     char op;
-    std::unique_ptr<ASTNode> LHS,RHS;
+    std::unique_ptr<ASTNode> LHS, RHS;
 
 public:
-    explicit BinaryExprAST(char O, std::unique_ptr<ASTNode> L, std::unique_ptr<ASTNode> R ) : op(O),LHS(std::move(L)),RHS(std::move(R)) {}
+    explicit BinaryExprAST(char O, std::unique_ptr<ASTNode> L, std::unique_ptr<ASTNode> R) : op(O), LHS(std::move(L)), RHS(std::move(R)) {}
     const char getOperator() const { return op; }
 };
 
-class CallExprAST : public ASTNode {
+class ConditionAST : public ASTNode
+{
+    std::string type;
+    std::unique_ptr<ASTNode> cond;
+    std::unique_ptr<ASTNode> block;
+
+public:
+    explicit ConditionAST(std::string t, std::unique_ptr<ASTNode> cond, std::unique_ptr<ASTNode> block) : type(t), cond(std::move(cond)), block(std::move(block)) {}
+};
+
+class LoopAST : public ASTNode
+{
+    std::unique_ptr<ASTNode> cond;
+    std::unique_ptr<ASTNode> block;
+
+public:
+    explicit LoopAST(std::unique_ptr<ASTNode> cond, std::unique_ptr<ASTNode> block) : cond(std::move(cond)), block(std::move(block)) {}
+};
+
+class CallExprAST : public ASTNode
+{
     std::string callee;
     std::vector<std::unique_ptr<ASTNode>> args;
 
@@ -43,26 +68,32 @@ public:
     const std::string getCallee() const { return callee; }
 };
 
-class PrototypeAST : public ASTNode {
+class PrototypeAST : public ASTNode
+{
     std::string name;
     std::vector<std::string> args;
+
 public:
-    explicit PrototypeAST(const std::string &name, std::vector<std::string> args) : name(name), args(std::move(args)){}
+    explicit PrototypeAST(const std::string &name, std::vector<std::string> args) : name(name), args(std::move(args)) {}
     const std::string getName() const { return name; }
 };
 
-class FunctionAST : public ASTNode {
+class FunctionAST : public ASTNode
+{
     std::unique_ptr<PrototypeAST> proto;
     std::vector<std::unique_ptr<ASTNode>> body;
+
 public:
-    explicit FunctionAST(std::unique_ptr<PrototypeAST> p, std::vector<std::unique_ptr<ASTNode>> b) : proto(std::move(p)), body(std::move(b)) {}    
+    explicit FunctionAST(std::unique_ptr<PrototypeAST> p, std::vector<std::unique_ptr<ASTNode>> b) : proto(std::move(p)), body(std::move(b)) {}
 };
 
-class ProgramAST : public ASTNode {
+class ProgramAST : public ASTNode
+{
     std::vector<std::unique_ptr<ASTNode>> set;
+
 public:
-    explicit ProgramAST(){}
-    void addFunction(std::unique_ptr<ASTNode> x){set.push_back(x);}
+    explicit ProgramAST() {}
+    void addFunction(std::unique_ptr<ASTNode> x) { set.push_back(x); }
 };
 
 #endif // AST_H

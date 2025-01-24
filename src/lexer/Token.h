@@ -12,7 +12,6 @@ enum class TokenType {
     KEYWORD,        // Language keywords (e.g., def, extern)
     INVALID,        // Unrecognized token
     EOL_TOKEN,      // End of line ( ; )
-    
 };
 
 struct Token {

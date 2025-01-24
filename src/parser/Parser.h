@@ -1,30 +1,13 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-
 #include <vector>
 #include <iostream>
 #include "Token.h"
 #include "AST.h"
 
-class node
+class Parser
 {
-private:
-    std::string name;
-    std::vector<node*> array;
-
-public:
-    node(std::string n, std::vector<node*> a): name(n), array(a) {}
-    std::string getName(){return name;}
-    std::vector<node*> getArray(){return array;}
-    void setName(std::string n){name = n;}
-    void setArray(std::vector<node*> a){array = a;}
-    void emptyArray(){array.clear();}
-    int getArraySize(){return array.size();}
-};
-
-
-class Parser {
 public:
     explicit Parser(const std::vector<Token> &tokens);
     std::unique_ptr<ASTNode> parse();
@@ -34,28 +17,33 @@ private:
     size_t currentToken = 0;
     std::vector<std::unique_ptr<ASTNode>> queue;
 
-    const Token& CurTok();
-    const Token& getNextToken();
+    // helper functions
+
+    const Token &CurTok();
+    const Token &getNextToken();
+    bool matchToken(TokenType type);
+
+    // parser functions
     std::unique_ptr<ASTNode> FunctionParser();
-    std::unique_ptr<ASTNode> ExpressionParser();
-    std::unique_ptr<ASTNode> CreateProto();
-    void CreateBlock(std::vector<std::unique_ptr<ASTNode>>& body);
+    std::unique_ptr<ASTNode> ProtoParser();
+    std::unique_ptr<ASTNode> BlockParser();
 
-    //functions for parsing a exprssion
-    // E -> TE'
-    // E'-> +TE' | -TE' | e
-    // T -> FT'
-    // T'-> *FT' | /FT' | e
-    // F -> (E) | id
-    // Recursive Descent Parser
-    
-    node* E();
-    node* T();
-    node* Eprime();
-    node* Tprime();
-    node* F();
-    int Precedence(std::string x);
+    // functions for parsing a exprssion
+    // expression       ::= equality
+    // equality         ::= comparison (("==" | "<>") comparison)*
+    // comparison       ::= term (("<" | ">" | "<=" | ">=") term)*
+    // term             ::= factor (("+" | "-") factor)*
+    // factor           ::= primary (("*" | "/") primary)*
+    // primary          ::= NUMBER | IDENTIFIER | "(" expression ")" | assignment
+    // assignment       ::= IDENTIFIER "=" expression
 
+    std::unique_ptr<ASTNode> parseExpression();
+    std::unique_ptr<ASTNode> parseEquality();
+    std::unique_ptr<ASTNode> parseComparison();
+    std::unique_ptr<ASTNode> parseTerm();
+    std::unique_ptr<ASTNode> parseFactor();
+    std::unique_ptr<ASTNode> parsePrimary();
+    std::unique_ptr<ASTNode> parseAssignment();
 };
 
 #endif // PARSER_H
