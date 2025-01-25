@@ -6,12 +6,14 @@ Parser::Parser(const std::vector<Token> &tokens) : tokens(tokens) {}
 
 std::unique_ptr<ASTNode> Parser::parse()
 {
+    std::cout<<"building parser "<<CurTok().value<<std::endl;
+
     std::vector<std::unique_ptr<ASTNode>> functions;
     while (matchToken(TokenType::KEYWORD) && CurTok().value == "def")
     {
         functions.push_back(FunctionParser());
     }
-    return parseExpression();
+    return std::make_unique<ProgramAST>(std::move(functions));
 }
 
 // Helper functions
@@ -39,28 +41,34 @@ bool Parser::matchToken(TokenType type)
 
 std::unique_ptr<ASTNode> Parser::FunctionParser()
 {
+    std::cout<<"building function "<<CurTok().value<<std::endl;
+
     auto proto = ProtoParser();
+    getNextToken();
     auto body = BlockParser();
-    return std::make_unique<FunctionAST>(proto, body);
+    return std::make_unique<FunctionAST>(std::move(proto), std::move(body));
 }
 
 std::unique_ptr<ASTNode> Parser::ProtoParser()
 {
     getNextToken();
-    auto name = CurTok();
+    std::cout<<"building proto "<<CurTok().value<<std::endl;
+    std::string name = CurTok().value;
     std::vector<std::unique_ptr<ASTNode>> args;
-    getNextToken();
+    currentToken+=2;
     while (CurTok().value != ")")
-    {
+    { 
         args.push_back(std::make_unique<VariableExprAST>(CurTok().value));
+        getNextToken();
     }
-    return std::make_unique<PrototypeAST>(name, args);
+    return std::make_unique<PrototypeAST>(name, std::move(args));
 }
 
-std::unique_ptr<ASTNode> Parser::BlockParser()
+std::vector<std::unique_ptr<ASTNode>> Parser::BlockParser()
 {
     std::vector<std::unique_ptr<ASTNode>> statements;
     getNextToken();
+    std::cout<<"building block "<<CurTok().value<<std::endl;
     while (CurTok().value != "}")
     {
         if (matchToken(TokenType::KEYWORD) && CurTok().value == "if")
@@ -69,7 +77,7 @@ std::unique_ptr<ASTNode> Parser::BlockParser()
             auto condition = parseExpression();
             currentToken += 2;
             auto block = BlockParser();
-            statements.push_back(std::make_unique<ConditionAST>("if", condition, block));
+            statements.push_back(std::make_unique<ConditionAST>("if", std::move(condition), std::move(block)));
         }
         else if (matchToken(TokenType::KEYWORD) && CurTok().value == "else")
         {
@@ -80,13 +88,13 @@ std::unique_ptr<ASTNode> Parser::BlockParser()
                 auto condition = parseExpression();
                 currentToken += 2;
                 auto block = BlockParser();
-                statements.push_back(std::make_unique<ConditionAST>("elif", condition, block));
+                statements.push_back(std::make_unique<ConditionAST>("elif", std::move(condition), std::move(block)));
             }
             else
             {
                 std::unique_ptr<ASTNode> condition;
                 auto block = BlockParser();
-                statements.push_back(std::make_unique<ConditionAST>("else", condition, block));
+                statements.push_back(std::make_unique<ConditionAST>("else", std::move(condition), std::move(block)));
             }
         }
         else if (matchToken(TokenType::KEYWORD) && CurTok().value == "while")
@@ -95,7 +103,20 @@ std::unique_ptr<ASTNode> Parser::BlockParser()
             auto cond = parseExpression();
             currentToken += 2;
             auto block = BlockParser();
-            statements.push_back(std::make_unique<LoopAST>(cond, block));
+            statements.push_back(std::make_unique<LoopAST>(std::move(cond), std::move(block)));
+        }else if(matchToken(TokenType::IDENTIFIER) && tokens[currentToken+1].value=="("){
+            std::string name = CurTok().value;
+            currentToken+=2;
+            std::vector<std::unique_ptr<ASTNode>> args;
+            while(CurTok().value!=")"){
+                if(matchToken(TokenType::IDENTIFIER)){
+                    args.push_back(std::make_unique<VariableExprAST>(getNextToken().value));
+                }else if(matchToken(TokenType::NUMBER)){
+                    args.push_back(std::make_unique<NumberExprAST>(std::stod(getNextToken().value)));
+                }
+            }
+            getNextToken();
+            statements.push_back(std::make_unique<CallExprAST>(name,std::move(args)));
         }
         else
         {
@@ -103,17 +124,22 @@ std::unique_ptr<ASTNode> Parser::BlockParser()
             getNextToken();
         }
     }
+    return statements;
 }
 
 // Expression parsers
 
 std::unique_ptr<ASTNode> Parser::parseExpression()
 {
+    std::cout<<"building expression "<<CurTok().value<<std::endl;
+
     return parseEquality();
 }
 
 std::unique_ptr<ASTNode> Parser::parseEquality()
 {
+    std::cout<<"building equality "<<CurTok().value<<std::endl;
+
     auto lhs = parseComparison();
 
     while (matchToken(TokenType::OPERATOR) &&
@@ -129,6 +155,8 @@ std::unique_ptr<ASTNode> Parser::parseEquality()
 
 std::unique_ptr<ASTNode> Parser::parseComparison()
 {
+    std::cout<<"building comparison "<<CurTok().value<<std::endl;
+
     auto lhs = parseTerm();
 
     while (matchToken(TokenType::OPERATOR) &&
@@ -145,6 +173,8 @@ std::unique_ptr<ASTNode> Parser::parseComparison()
 
 std::unique_ptr<ASTNode> Parser::parseTerm()
 {
+    std::cout<<"building term "<<CurTok().value<<std::endl;
+
     auto lhs = parseFactor();
 
     while (matchToken(TokenType::OPERATOR) &&
@@ -160,6 +190,8 @@ std::unique_ptr<ASTNode> Parser::parseTerm()
 
 std::unique_ptr<ASTNode> Parser::parseFactor()
 {
+    std::cout<<"building factor "<<CurTok().value<<std::endl;
+
     auto lhs = parsePrimary();
 
     while (matchToken(TokenType::OPERATOR) &&
@@ -175,6 +207,8 @@ std::unique_ptr<ASTNode> Parser::parseFactor()
 
 std::unique_ptr<ASTNode> Parser::parsePrimary()
 {
+    std::cout<<"building primary "<<CurTok().value<<std::endl;
+
     const Token &token = CurTok();
 
     if (token.type == TokenType::NUMBER)
@@ -205,6 +239,8 @@ std::unique_ptr<ASTNode> Parser::parsePrimary()
 
 std::unique_ptr<ASTNode> Parser::parseAssignment()
 {
+    std::cout<<"building assignment "<<CurTok().value<<std::endl;
+
     const Token &token = CurTok();
 
     if (token.type == TokenType::IDENTIFIER && tokens[currentToken + 1].value == "=")

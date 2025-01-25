@@ -46,7 +46,6 @@ Token Lexer::getNextToken() {
         ch=getNextChar();
     }
     size_t col = column;
-    std::cout<<ch<<std::endl;
     if (isalpha(ch)) {
         std::string identifier;
         while (isalnum(ch) || ch == '_') {

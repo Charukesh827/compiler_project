@@ -14,7 +14,6 @@ std::string readFile(const std::string& filename) {
 int main() {
     std::string source = readFile("/home/hajun/aaaaa/compiler_project/examples/code1.txt");
     // Lexer
-    std::cout<<source<<std::endl;
     Lexer lexer(source);
     auto tokens = lexer.tokenize();
 
@@ -22,11 +21,13 @@ int main() {
         std::cout << "Token: " << token.value << " (" << static_cast<int>(token.type) << ") - ["<<token.line<<" , "<<token.column<<"]\n";
     }
 
-    // // Parser
-    // Parser parser(tokens);
-    // auto ast = parser.parse();
+    // Parser
+    Parser parser(tokens);
+    auto ast = parser.parse();
 
-    // std::cout << "Parsing completed!\n";
+    std::cout << "Parsing completed!\n";
 
+    ast = printTree(std::move(ast));
+    
     return 0;
 }
