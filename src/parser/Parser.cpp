@@ -217,6 +217,10 @@ std::unique_ptr<ASTNode> Parser::parsePrimary()
         return std::make_unique<NumberExprAST>(std::stod(token.value));
     }
 
+    if (token.type == TokenType::IDENTIFIER && tokens[currentToken + 1].value == "="){
+        return parseAssignment();
+    }
+
     if (token.type == TokenType::IDENTIFIER)
     {
         getNextToken();

@@ -15,7 +15,6 @@ public:
 private:
     const std::vector<Token> &tokens;
     size_t currentToken = 0;
-    std::vector<std::unique_ptr<ASTNode>> queue;
 
     // helper functions
 
@@ -26,7 +25,7 @@ private:
     // parser functions
     std::unique_ptr<ASTNode> FunctionParser();
     std::unique_ptr<ASTNode> ProtoParser();
-    std::unique_ptr<ASTNode> BlockParser();
+    std::vector<std::unique_ptr<ASTNode>> BlockParser();
 
     // functions for parsing a exprssion
     // expression       ::= equality

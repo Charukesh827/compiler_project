@@ -3,6 +3,7 @@
 #include <sstream>
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
+#include "LLVM/BuildBasic.h"
 
 std::string readFile(const std::string& filename) {
     std::ifstream file(filename);
@@ -12,7 +13,7 @@ std::string readFile(const std::string& filename) {
 }
 
 int main() {
-    std::string source = readFile("/home/hajun/aaaaa/compiler_project/examples/code1.txt");
+    std::string source = readFile("/home/hajun/aaaaa/compiler_project/examples/code2.txt");
     // Lexer
     Lexer lexer(source);
     auto tokens = lexer.tokenize();
@@ -27,7 +28,11 @@ int main() {
 
     std::cout << "Parsing completed!\n";
 
-    ast = printTree(std::move(ast));
+    Basic code = Basic(std::move(ast));
+
+    code.GenerateLLVM();
+
+    code.print();
     
     return 0;
 }

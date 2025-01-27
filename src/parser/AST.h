@@ -9,7 +9,9 @@
 class ASTNode
 {
 public:
-    virtual ~ASTNode() = default;
+    // virtual ~ASTNode() = default;
+    virtual std::string type() = 0;
+    
 };
 
 class NumberExprAST : public ASTNode
@@ -18,7 +20,8 @@ class NumberExprAST : public ASTNode
 
 public:
     explicit NumberExprAST(double val) : value(val) {}
-    double print() const { return value; }
+    double getValue() const { return value; }
+    std::string type()override{ return "Number";}
 };
 
 class VariableExprAST : public ASTNode
@@ -27,7 +30,8 @@ class VariableExprAST : public ASTNode
 
 public:
     explicit VariableExprAST(const std::string &name) : name(name) {}
-    const std::string print() const { return name; }
+    const std::string& getName() const { return name; }
+    std::string type()override{ return "Variable";}
 };
 
 class BinaryExprAST : public ASTNode
@@ -35,24 +39,27 @@ class BinaryExprAST : public ASTNode
     std::string op;
     std::unique_ptr<ASTNode> LHS, RHS;
 
+
 public:
     explicit BinaryExprAST(std::string O, std::unique_ptr<ASTNode> L, std::unique_ptr<ASTNode> R) : op(O), LHS(std::move(L)), RHS(std::move(R)) {}
-    std::string print() const { return op; }
+    const std::string& getOp() const { return op; }
     std::unique_ptr<ASTNode>& getLHS() { return LHS; }
     std::unique_ptr<ASTNode>& getRHS() { return RHS; }
+    std::string type()override{ return "Operator";}
 };
 
 class ConditionAST : public ASTNode
 {
-    std::string type;
+    std::string Ctype;
     std::unique_ptr<ASTNode> cond;
     std::vector<std::unique_ptr<ASTNode>> block;
 
 public:
-    explicit ConditionAST(std::string t, std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> block) : type(t), cond(std::move(cond)), block(std::move(block)) {}
-    std::string print() const { return type; }
+    explicit ConditionAST(std::string t, std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> block) : Ctype(t), cond(std::move(cond)), block(std::move(block)) {}
+    const std::string& getType() const { return Ctype; }
     std::unique_ptr<ASTNode>& getCond() { return cond; }
     std::vector<std::unique_ptr<ASTNode>>& getBlock() { return block; }
+    std::string type()override{ return Ctype;}
 };
 
 class LoopAST : public ASTNode
@@ -62,9 +69,9 @@ class LoopAST : public ASTNode
 
 public:
     explicit LoopAST(std::unique_ptr<ASTNode> cond, std::vector<std::unique_ptr<ASTNode>> block) : cond(std::move(cond)), block(std::move(block)) {}
-    std::string print() const { return "While"; }
     std::unique_ptr<ASTNode>& getCond() { return cond; }
     std::vector<std::unique_ptr<ASTNode>>& getBlock() { return block; }
+    std::string type()override{ return "While";}
 };
 
 class CallExprAST : public ASTNode
@@ -74,8 +81,9 @@ class CallExprAST : public ASTNode
 
 public:
     explicit CallExprAST(const std::string &c, std::vector<std::unique_ptr<ASTNode>> args) : callee(c), args(std::move(args)) {}
-    const std::string getCallee() const { return callee; }
+    const std::string& getCallee() const { return callee; }
     std::vector<std::unique_ptr<ASTNode>>& getArgs() { return args; }
+    std::string type()override{ return "Call";}
 };
 
 class PrototypeAST : public ASTNode
@@ -85,7 +93,9 @@ class PrototypeAST : public ASTNode
 
 public:
     explicit PrototypeAST(const std::string &name, std::vector<std::unique_ptr<ASTNode>> args) : name(name), args(std::move(args)) {}
-    const std::string getName() const { return name; }
+    const std::string& getName() const { return name; }
+    std::vector<std::unique_ptr<ASTNode>>& getArgs() { return args; }
+    std::string type()override{ return "Prototype";}
 };
 
 class FunctionAST : public ASTNode
@@ -95,7 +105,9 @@ class FunctionAST : public ASTNode
 
 public:
     explicit FunctionAST(std::unique_ptr<ASTNode> p, std::vector<std::unique_ptr<ASTNode>> b) : proto(std::move(p)), body(std::move(b)) {}
+    std::unique_ptr<ASTNode>& getProto() { return proto; }
     std::vector<std::unique_ptr<ASTNode>>& getBody() { return body; }
+    std::string type()override{ return "Function";}
 };
 
 class ProgramAST : public ASTNode
@@ -106,9 +118,7 @@ public:
     explicit ProgramAST(std::vector<std::unique_ptr<ASTNode>> f): functions(std::move(f)) {}
     void addFunction(std::unique_ptr<ASTNode> x) { functions.push_back(std::move(x)); }
     std::vector<std::unique_ptr<ASTNode>>& getFunctions() { return functions; }
+    std::string type()override{ return "Program";}
 };
-
-// Declaration of the function to print the tree
-std::unique_ptr<ASTNode> printTree(std::unique_ptr<ASTNode> head);
 
 #endif // AST_H
