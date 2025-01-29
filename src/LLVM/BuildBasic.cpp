@@ -2,6 +2,7 @@
 
 llvm::Module* Basic::GenerateLLVM()
 {
+    std::cout<<"Generating LLVM"<<std::endl;
     auto programAST = dynamic_cast<ProgramAST *>(root.get());
     if (!programAST) {
         throw std::runtime_error("Invalid AST: root is not a ProgramAST");
@@ -20,12 +21,16 @@ llvm::Module* Basic::GenerateLLVM()
 
 llvm::Function *Basic::GenerateFunction(FunctionAST *node)
 {
+    
     auto proto = dynamic_cast<PrototypeAST *>(node->getProto().get());
     if (!proto) {
         throw std::runtime_error("Invalid AST: node prototype is not a PrototypeAST");
     }
     
     std::string functionName = proto->getName();
+
+    std::cout<<"Generating Function "<<functionName<<std::endl;
+
     auto returnType = llvm::Type::getDoubleTy(context);
     std::vector<llvm::Type *> Types(proto->getArgs().size(), llvm::Type::getDoubleTy(context));
     auto parmTypes = llvm::ArrayRef<llvm::Type *>(Types);
@@ -38,6 +43,10 @@ llvm::Function *Basic::GenerateFunction(FunctionAST *node)
     whileCount = 0;
     entryCount = 0;
     size_t pc = 0;
+    variables.empty();
+    table.empty();
+    count.empty();
+
     std::vector<std::unique_ptr<ASTNode>>* functionBody = &node->getBody();
     llvm::BasicBlock *Block = llvm::BasicBlock::Create(context, "entry" + std::to_string(entryCount), function);
 
@@ -49,11 +58,14 @@ llvm::Function *Basic::GenerateFunction(FunctionAST *node)
 
 void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::unique_ptr<ASTNode>>* block , size_t pc) // Updated function name
 {
+    std::cout<<"generating Basic Block "<<std::string(curBlock->getName())<<std::endl;
     llvm::BasicBlock *mergeBlock = curBlock;
     bool used = true;
     builder.SetInsertPoint(mergeBlock);
+    std::cout<<"Block Size: "<<block->size()<<std::endl;
     while (pc < block->size())
     {
+        std::cout<<"pc: "<<pc<<std::endl;
         if (block->at(pc)->type() == "if"&& pc+1 < block->size() && block->at(pc + 1)->type() == "else")
         {
             entryCount++;
@@ -74,24 +86,57 @@ void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::un
             builder.CreateCondBr(conditionValue, thenBlock, elseBlock);
 
             ifCount++;
+            //finding the variables that are used in if
+            auto beforeIF = count;
 
             // builder.SetInsertPoint(thenBlock);
             ControllerBasicBlock(thenBlock, &conditionAST->getBlock() ,0); // Updated function name
             builder.CreateBr(mergeBlock);
+
+            auto afterIF = count;
+            auto variableIF = findMismatches(beforeIF,afterIF);
+            std::cout<<"if keys: "<<variableIF.size()<<std::endl;
 
             conditionAST = dynamic_cast<ConditionAST*>(block->at(pc+1).get());
             if (!conditionAST) {
                 throw std::runtime_error("Invalid AST: block is not a ConditionAST");
             }
 
+            //finding the variables that are used in else
+            auto beforeELSE = count;
+
             // builder.SetInsertPoint(elseBlock);
             ControllerBasicBlock(elseBlock, &conditionAST->getBlock(), 0); // Updated function name
             builder.CreateBr(mergeBlock);
 
+            auto afterELSE = count;
+            auto variableELSE = findMismatches(beforeELSE,afterELSE);
+            std::cout<<"else keys: "<<variableELSE.size()<<std::endl;
+
+            auto commonVariable = findCommonKeys(variableIF,variableELSE);
+            std::cout<<"common keys: "<<commonVariable.size()<<std::endl;
+
+            if (commonVariable.size() > 0){
+
+                builder.SetInsertPoint(mergeBlock);
+                for (auto &i : commonVariable)
+                {
+                    llvm::Value* ifValue = builder.CreateFPExt(variableIF[i], llvm::Type::getDoubleTy(context), "ifValue"); // Cast if necessary
+                    llvm::Value* elseValue = builder.CreateFPExt(variableELSE[i], llvm::Type::getDoubleTy(context), "elseValue"); // Cast if necessary                    
+                    
+                    std::string name = std::string(GetName(i,true)->getName());
+                    auto var = builder.CreatePHI(llvm::Type::getDoubleTy(context), 2,name);
+                    var->addIncoming(ifValue,thenBlock);
+                    var->addIncoming(elseValue,elseBlock);
+                }
+                
+            }
+            used=true;
             pc += 2;
         }
         else if (block->at(pc)->type() == "if")
         {
+            std::cout<<"I am doing it"<<std::endl;
             entryCount++;
             if (used == false)
             {
@@ -110,7 +155,7 @@ void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::un
             used = false;
             builder.CreateCondBr(conditionValue, thenBlock, mergeBlock);
 
-            // builder.SetInsertPoint(thenBlock);
+            
             ControllerBasicBlock(thenBlock, &conditionAST->getBlock(), 0);
             builder.CreateBr(mergeBlock);
 
@@ -136,14 +181,17 @@ void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::un
             used = false;
             builder.CreateCondBr(conditionValue, loopBlock, mergeBlock);
 
-            // builder.SetInsertPoint(loopBlock);
+            
             ControllerBasicBlock(loopBlock, &loopAST->getBlock(), 0);
             builder.CreateBr(mergeBlock);
             pc++;
         }
         else
         {
-            used = true;
+            if(used==false){
+                builder.SetInsertPoint(mergeBlock);
+                used = true;
+            }
             GenerateExpression(block->at(pc).get(), false);
             pc++;
         }
@@ -167,7 +215,6 @@ llvm::Value *Basic::GenerateExpression(ASTNode *node, bool left)
         auto rightValue = GenerateExpression(binaryExpr->getRHS().get(), false);
         if (binaryExpr->getOp() == "=")
         {
-            std::cout<<"i am called"<<std::endl;
             leftValue = GenerateExpression(binaryExpr->getLHS().get(), true);
         }else{
             leftValue = GenerateExpression(binaryExpr->getLHS().get(), false);
@@ -188,6 +235,9 @@ llvm::Value *Basic::GenerateExpression(ASTNode *node, bool left)
         else if (binaryExpr->getOp() == "/")
         {
             return builder.CreateFDiv(leftValue, rightValue, "div");
+        }else if (binaryExpr->getOp() == ">")
+        {
+            return builder.CreateFCmpUGT(leftValue, rightValue, "gt");
         }
         else if (binaryExpr->getOp() == "<")
         {
@@ -211,7 +261,6 @@ llvm::Value *Basic::GenerateExpression(ASTNode *node, bool left)
         }
         else if (binaryExpr->getOp() == "=")
         {
-            
             return builder.CreateStore(leftValue, rightValue);
         }
     }
@@ -229,7 +278,6 @@ llvm::Value *Basic::GenerateExpression(ASTNode *node, bool left)
 }
 
 llvm::AllocaInst* Basic::GetName(std::string name, bool left){
-    std::cout<<name<<"--"<<left<<std::endl;
     if(std::find(variables.begin(), variables.end(), name) == variables.end()){
         table[name] = builder.CreateAlloca(llvm::Type::getDoubleTy(context), nullptr,name);
         variables.push_back(name);
@@ -248,4 +296,57 @@ llvm::AllocaInst* Basic::GetName(std::string name, bool left){
 
 void Basic::print(){
     module->print(llvm::outs(),nullptr);
+}
+
+std::map<std::string, llvm::AllocaInst *> Basic::findMismatches(const std::map<std::string, int>& map1, const std::map<std::string, int>& map2) {
+    std::map<std::string, llvm::AllocaInst *> mismatches;
+
+    // Check for keys in map1
+    for (const auto& pair : map1) {
+        const std::string& key = pair.first;
+        int count1 = pair.second;
+
+        // Check if the key exists in map2
+        auto it = map2.find(key);
+        if (it != map2.end()) {
+            int count2 = it->second;
+            // If counts are different, add to mismatches
+            if (count1 != count2) {
+                mismatches[key]=table[key];
+            }
+        } else {
+            // Key is not in map2
+            mismatches[key] = table[key];
+        }
+    }
+
+    // Check for keys that are only in map2
+    for (const auto& pair : map2) {
+        const std::string& key = pair.first;
+
+        // If key is not found in map1, add it to mismatches
+        if (map1.find(key) == map1.end()) {
+            mismatches[key] = table[key];
+        }
+    }
+
+    return mismatches;
+}
+
+
+std::vector<std::string> Basic::findCommonKeys(const std::map<std::string, llvm::AllocaInst*>& map1, const std::map<std::string, llvm::AllocaInst*>& map2) {
+    std::vector<std::string> commonKeys;
+
+    // Iterate through the first map
+    for (const auto& pair : map1) {
+        const std::string& key = pair.first;
+
+        // Check if the key exists in the second map
+        if (map2.find(key) != map2.end()) {
+            // If it exists in both maps, add to commonKeys
+            commonKeys.push_back(key);
+        }
+    }
+
+    return std::move(commonKeys);
 }

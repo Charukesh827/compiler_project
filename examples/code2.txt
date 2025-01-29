@@ -2,5 +2,11 @@ def main(){
     a=10;
     b=20;
     c=30;
-    x=a+b*c;
+    x=5;
+    if(a>5){
+        x=a+b+c;
+    }else{
+        x=a+b;
+    }
+    y=x;
 }

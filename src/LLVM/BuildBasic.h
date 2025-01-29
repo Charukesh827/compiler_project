@@ -48,6 +48,8 @@ private:
     void ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::unique_ptr<ASTNode>>* block ,size_t pc);
     llvm::Value *GenerateExpression(ASTNode *node, bool left);
     llvm::AllocaInst * GetName(std::string name, bool left);
+    std::map<std::string, llvm::AllocaInst *> findMismatches(const std::map<std::string, int>& map1, const std::map<std::string, int>& map2);
+    std::vector<std::string> findCommonKeys(const std::map<std::string, llvm::AllocaInst*>& map1, const std::map<std::string, llvm::AllocaInst*>& map2);
 };
 
 #endif // BUILDBASIC_H

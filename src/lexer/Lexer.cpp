@@ -52,7 +52,7 @@ Token Lexer::getNextToken() {
             identifier += ch;
             ch = getNextChar();
         }
-        if (identifier == "def" || identifier == "extern" || identifier == "if" || identifier == "else" || identifier == "while")
+        if (identifier == "def" || identifier == "extern" || identifier == "if" || identifier == "else" || identifier == "while" || identifier == "return")
         {
             return Token(TokenType::KEYWORD, identifier, line, col);
         }else
