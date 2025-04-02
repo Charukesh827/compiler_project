@@ -73,6 +73,7 @@ std::vector<std::unique_ptr<ASTNode>> Parser::BlockParser()
     {
         if (matchToken(TokenType::KEYWORD) && CurTok().value == "if")
         {
+            std::cout<<"if"<<std::endl;
             currentToken += 2;
             auto condition = parseExpression();
             currentToken++;
@@ -82,6 +83,7 @@ std::vector<std::unique_ptr<ASTNode>> Parser::BlockParser()
         }
         else if (matchToken(TokenType::KEYWORD) && CurTok().value == "else")
         {
+            std::cout<<"else"<<std::endl;
             getNextToken();
             std::unique_ptr<ASTNode> condition;
             auto block = BlockParser();
@@ -90,10 +92,13 @@ std::vector<std::unique_ptr<ASTNode>> Parser::BlockParser()
         }
         else if (matchToken(TokenType::KEYWORD) && CurTok().value == "while")
         {
+            std::cout<<"while"<<std::endl;
             currentToken += 2;
             auto cond = parseExpression();
-            currentToken += 2;
+            currentToken += 1;
+            std::cout<<"completed expression"<<std::endl;
             auto block = BlockParser();
+            std::cout<<"completed block"<<std::endl;
             statements.push_back(std::make_unique<LoopAST>(std::move(cond), std::move(block)));
         }
         else if (matchToken(TokenType::IDENTIFIER) && tokens[currentToken + 1].value == "(")

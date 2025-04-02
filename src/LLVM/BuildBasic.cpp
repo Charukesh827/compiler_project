@@ -60,6 +60,7 @@ void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::un
 {
     std::cout<<"generating Basic Block "<<std::string(curBlock->getName())<<std::endl;
     llvm::BasicBlock *mergeBlock = curBlock;
+    llvm::BasicBlock *conditionblock;
     bool used = true;
     builder.SetInsertPoint(mergeBlock);
     std::cout<<"Block Size: "<<block->size()<<std::endl;
@@ -173,7 +174,8 @@ void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::un
             if (!loopAST) {
                 throw std::runtime_error("Invalid AST: block is not a ConditionAST");
             }
-
+            auto conditionblock = llvm::BasicBlock::Create(context, "cond"+std::to_string(whileCount),function);
+            builder.SetInsertPoint(conditionblock);
             auto conditionValue = GenerateExpression(loopAST->getCond().get(),false);
 
             auto loopBlock = llvm::BasicBlock::Create(context, "while" + std::to_string(whileCount), function);
@@ -183,7 +185,7 @@ void Basic::ControllerBasicBlock(llvm::BasicBlock *curBlock, std::vector<std::un
 
             
             ControllerBasicBlock(loopBlock, &loopAST->getBlock(), 0);
-            builder.CreateBr(mergeBlock);
+            builder.CreateBr(conditionblock);
             pc++;
         }
         else

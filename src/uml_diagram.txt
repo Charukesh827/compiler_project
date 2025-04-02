@@ -1,0 +1,110 @@
+@startuml
+class ASTNode {
+    +type(): string
+}
+
+class NumberExprAST {
+    -value: double
+    +getValue(): double
+    +type(): string
+}
+
+class VariableExprAST {
+    -name: string
+    +getName(): string
+    +type(): string
+}
+
+class BinaryExprAST {
+    -op: string
+    -LHS: ASTNode
+    -RHS: ASTNode
+    +getOp(): string
+    +getLHS(): ASTNode
+    +getRHS(): ASTNode
+    +type(): string
+}
+
+class ConditionAST {
+    -Ctype: string
+    -cond: ASTNode
+    -block: vector<ASTNode>
+    +getType(): string
+    +getCond(): ASTNode
+    +getBlock(): vector<ASTNode>
+    +type(): string
+}
+
+class LoopAST {
+    -cond: ASTNode
+    -block: vector<ASTNode>
+    +getCond(): ASTNode
+    +getBlock(): vector<ASTNode>
+    +type(): string
+}
+
+class CallExprAST {
+    -callee: string
+    -args: vector<ASTNode>
+    +getCallee(): string
+    +getArgs(): vector<ASTNode>
+    +type(): string
+}
+
+class PrototypeAST {
+    -name: string
+    -args: vector<ASTNode>
+    +getName(): string
+    +getArgs(): vector<ASTNode>
+    +type(): string
+}
+
+class FunctionAST {
+    -proto: PrototypeAST
+    -body: vector<ASTNode>
+    +getProto(): PrototypeAST
+    +getBody(): vector<ASTNode>
+    +type(): string
+}
+
+class ProgramAST {
+    -functions: vector<ASTNode>
+    +addFunction(ASTNode): void
+    +getFunctions(): vector<ASTNode>
+    +type(): string
+}
+
+class Parser {
+    -tokens: vector<Token>
+    -currentToken: int
+    +parse(): unique_ptr<ASTNode>
+    +FunctionParser(): unique_ptr<ASTNode>
+    +ProtoParser(): unique_ptr<ASTNode>
+    +BlockParser(): vector<unique_ptr<ASTNode>>
+}
+
+class Basic {
+    -root: unique_ptr<ASTNode>
+    -context: LLVMContext
+    -module: unique_ptr<llvm::Module>
+    -builder: IRBuilder
+    +GenerateLLVM(): llvm::Module*
+    +GenerateFunction(FunctionAST): llvm::Function*
+    +ControllerBasicBlock(llvm::BasicBlock*, vector<unique_ptr<ASTNode>>*, size_t): void
+    +GenerateExpression(ASTNode*, bool): llvm::Value*
+    +print(): void
+}
+
+ASTNode <|-- NumberExprAST
+ASTNode <|-- VariableExprAST
+ASTNode <|-- BinaryExprAST
+ASTNode <|-- ConditionAST
+ASTNode <|-- LoopAST
+ASTNode <|-- CallExprAST
+ASTNode <|-- PrototypeAST
+ASTNode <|-- FunctionAST
+ASTNode <|-- ProgramAST
+
+Parser --> ASTNode
+Basic --> ASTNode
+@enduml

@@ -1,12 +1,7 @@
 def main(){
-    a=10;
-    b=20;
-    c=30;
-    x=5;
-    if(a>5){
-        x=a+b+c;
-    }else{
-        x=a+b;
+    x=0;
+    y=0;
+    while(x<10){
+        y=3;
     }
-    y=x;
 }
